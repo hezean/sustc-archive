@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Danmaku</title>
+    <script src="../ws/main.js"></script>
+</head>
+
+<body>
+
+<div id="final" style="width:100%">
+
+    <div id="left" style="width:75%; float:left">
+        <div class="screen_container" id="contents">
+            <!-- Video player in html5, can auto send a request to get the next part of 206, also support preload -->
+            <video id="vdo" class="video-js"
+                   controls controlslist="nodownload nofullscreen"
+                   preload="auto"
+                   width="770" height="430">
+                <source src="http://localhost:8765/vs/001" id="vsrc" type="video/mp4">
+            </video>
+            <!-- The video player is put at the button of 'contents', danmakus are put over it -->
+        </div>
+
+        <div style="text-align: center; color: #4a2300">
+
+            <!-- Three sample videos, different video has different danmakus list -->
+            <div>
+                <input type="radio" id="001" name="sel" onchange="checkVideoSrc();" value="001" checked>
+                <label for="001">Introducing iPhone 13</label>
+            </div>
+            <div>
+                <input type="radio" id="002" name="sel" onchange="checkVideoSrc();" value="002">
+                <label for="002">Now in Green</label>
+            </div>
+            <div>
+                <input type="radio" id="003" name="sel" onchange="checkVideoSrc();" value="003">
+                <label for="003">Introducing iPad Pro</label>
+            </div>
+
+            <!-- Controllers for the video player, note that the pause/play is inside the player itself and thus omitted (supports chrome) -->
+            <br>
+            <div id="buttonbar">
+                <button onclick="changespeed(-0.1);">slower</button>&nbsp;&nbsp;
+                <button onclick="fastfwd(-5);"><< 5s</button>&nbsp;&nbsp;
+                <button onclick="fastfwd(5);">5s >></button>&nbsp;&nbsp;
+                <button onclick="changespeed(0.1);">faster</button>
+            </div>
+
+        </div>
+
+        <div class="main">
+            <textarea id="danmakutext" type="text" placeholder="Danmaku~"></textarea>
+            <button class="send">Send</button>
+        </div>
+    </div>
+
+    <!-- Chat history, see the below css definitions -->
+    <div id="chat" style="width:25%; float:right">
+        <div class="edge" id="bubbles"></div>
+    </div>
+
+</div>
+
+
+<style>
+    .screen_container {
+        position: relative;
+        width: 770px;
+        height: 430px;
+        margin: 30px auto;
+        background: #000;
+        overflow: hidden;
+        border-style: solid;
+        border-radius: 25px;
+        border-color: #0c7d88;
+    }
+
+    .edge {
+        height: 700px;
+        border: 1px solid #666;
+        background: #fff;
+        margin: 10px auto 0;
+        overflow: auto;
+    }
+
+    .bubble {
+        margin: 10px;
+    }
+
+    .bubble span {
+        display: inline-block;
+        background: #0181cc;
+        border-radius: 7px;
+        color: #fff;
+        padding: 5px 10px;
+    }
+
+    .my_bubble {
+        margin: 10px;
+        text-align: right;
+    }
+
+    .my_bubble span {
+        display: inline-block;
+        background: #ef8201;
+        border-radius: 7px;
+        color: #fff;
+        padding: 5px 10px;
+    }
+
+    .main {
+        width: 600px;
+        margin: 20px auto;
+        text-align: center;
+    }
+
+    /* using flask render template */
+    body {
+        background-image: url({{ url_for('static', filename='bg.png') }});
+        background-blend-mode: lighten;
+        background-color: rgba(255,255,255,0.6);
+        background-size: cover;
+    }
+</style>
+
+
+<!-- jQuery -->
+<script src="https://cdn.staticfile.org/jquery/3.3.1/jquery.min.js"></script>
+<script>
+    // client id used to identify users in the chat history panel
+    const id = '{{cid}}'
+
+    // for danmakus
+    const timers = [];
+
+    // the video been selected
+    let vid = document.querySelector('input[name="sel"]:checked').value;
+
+    // timers for scheduled functions
+    let queryTimer = null;
+    let displayTimer = null;
+    let chatTimer = null;
+
+    // the timestamp of last request of query new danmakus
+    let lreq = -1;
+    // the timestamp of last request of query new chats
+    let lcreq = -1;
+
+    // in the case of a lot of danmakus are sent in a small period
+    // we put the body (parsed, which is a list of new danmakus) of the GET request into a queue
+    // and send them later
+    const danmakuQueue = new Queue();
+    // to reduce the number of internet reactions, send the danmakus collected in 100ms as a batch
+    const sendDanmakuQueue = new Queue();
+    // similar to danmakuQueue, use a queue to prevent the function getting new chats been blocked
+    const chatQueue = new Queue();
+
+    const video = document.getElementById('vdo');
+
+    // when changes the selected radio button
+    function checkVideoSrc() {
+        // reload the video
+        vid = document.querySelector('input[name="sel"]:checked').value;
+        video.pause();
+        document.getElementById('vsrc').setAttribute('src', 'http://localhost:8765/vs/' + vid);
+
+        // clear the unsent but outdated danmakus
+        danmakuQueue.clear();
+
+        video.load();
+        video.play();
+
+        // the next call of daemonChatHistory() will get all the history chats since this 'timestamp' is less than any time
+        lcreq = -1;
+        // clear the old danmakus history that not belongs to the new video
+        document.getElementById('bubbles').innerHTML = '';
+    }
+
+    // functions for the video control buttons
+    function fastfwd(val) {
+        video.currentTime += val;
+    }
+
+    function changespeed(val) {
+        video.playbackRate += val;
+    }
+    // END functions for the video control buttons
+
+    // daemon scheduled functions
+    getNewDanmakus();
+    sendIncomingDanmakus();
+    daemonChatHistory();
+
+
+    async function getNewDanmakus() {
+        // at the start of video (after reloading a video to display) or the video has played 100ms after last fetch s.t. the danmakus won't overlap
+        if (video.currentTime < 0.05 && video.playing
+            || Math.abs(Math.floor(video.currentTime * 1000) - lreq) > 100) {
+            const resp = await $.get('http://localhost:8765/danmaku/' + vid, {
+                last: lreq,
+            });
+            danmakuQueue.push(resp['dm']);
+            lreq = Math.ceil(video.currentTime * 1000);  // ms
+        }
+
+        // send all the danmakus in last 100ms
+        // the absolute sent time updated to the items in the queue must be later than its display time
+        // thus no overlap and no missing
+        if (!sendDanmakuQueue.isEmpty()) {
+            sendDanmakuQueue.updateTime();
+            await $.post('http://localhost:8765/danmaku/' + vid, {
+                dms: JSON.stringify(sendDanmakuQueue.popAll())
+            });
+            lreq = Math.ceil(video.currentTime * 1000);
+        }
+
+        if (queryTimer) clearTimeout(queryTimer);
+        queryTimer = setTimeout(() => getNewDanmakus(), 100 * video.playbackRate);  // 10 checks per sec
+    }
+
+    // new danmakus get into queue first, then are sent by this function that will not block getNewDanmakus()
+    async function sendIncomingDanmakus() {
+        while (!danmakuQueue.isEmpty()) {
+            const dm = createDanmaku(danmakuQueue.pop());
+            addInterval(dm);
+        }
+        if (displayTimer) clearTimeout(displayTimer);
+        displayTimer = setTimeout(() => sendIncomingDanmakus(), 5);
+    }
+
+    async function daemonChatHistory() {
+        const tlcreq = Date.now();  // save the time of starting the function as a temp value
+        const resp = await $.get('http://localhost:8765/chat/' + vid, {
+            last: lcreq,
+            cid: id,
+        });
+        lcreq = tlcreq;  // each time, update lcreq as the time of begging this function, to avoid missing danmakus
+        chatQueue.push(resp['dm']);
+
+        while (!chatQueue.isEmpty()) {
+            const chat_sender = chatQueue.pop();
+            let s;
+            if (chat_sender[1]) {  // bool is_my_danmaku, judged by the server
+                s = '<div class="my_bubble"><span>' + chat_sender[0] + '</span></div>';
+            } else {
+                s = '<div class="bubble"><span>' + chat_sender[0] + '</span></div>';
+            }
+            document.getElementById('bubbles').innerHTML += s;
+            document.getElementById('bubbles').scrollIntoView();
+        }
+
+        if (chatTimer) clearTimeout(chatTimer);
+        chatTimer = setTimeout(() => daemonChatHistory(), 70);
+    }
+
+    $(".send").on("click", async () => {
+        const danmaku = document.getElementById('danmakutext').value;
+        if (danmaku === '') {
+            alert('Blank danmaku is invalid')
+            return;
+        }
+
+        // display the danmaku immediately, since it's natural to see it displayed without waiting for the turing poll
+        const dm = createDanmaku(danmaku);
+        addInterval(dm);
+
+        // danmakus are collected and waited to be sent as a batch
+        sendDanmakuQueue.push({
+            ts: Math.floor(video.currentTime * 1000),  // in video time
+            cid: id,  // client id
+            at: 0,  // absolute time, which will be set just before the POST request is sent
+            val: danmaku,  // content str
+        });
+
+        document.getElementById('danmakutext').value = '';  // clean the textfield after sent
+    });
+
+    function createDanmaku(text) {
+        const jqueryDom = $("<div class='bullet'>" + text + "</div>");
+        const fontColor = "hsl(" + Math.random() * 360 + ", 100%, 75%)";
+        const fontSize = "20px";
+        let top = Math.floor(Math.random() * 390) + "px";
+        const left = $(".screen_container").width() + "px";
+        jqueryDom.css({
+            "position": 'absolute',
+            "color": fontColor,
+            "font-size": fontSize,
+            "left": left,
+            "top": top,
+        });
+        $(".screen_container").append(jqueryDom);
+        return jqueryDom;
+    }
+
+    function addInterval(jqueryDom) {
+        let left = jqueryDom.offset().left - $(".screen_container").offset().left;
+        const timer = setInterval(function () {
+            left--;
+            jqueryDom.css("left", left + "px");
+            if (jqueryDom.offset().left + jqueryDom.width() < $(".screen_container").offset().left) {
+                jqueryDom.remove();
+                clearInterval(timer);
+            }
+        }, 5 * video.playbackRate);
+        timers.push(timer);
+    }
+
+    function Queue() {
+        let items = [];
+
+        this.push = function (element) {
+            if (element instanceof Array) items = items.concat(element);
+            else items.push(element);
+        };
+
+        this.pop = function () {
+            return items.shift();
+        };
+
+        this.isEmpty = function () {
+            return items.length === 0;
+        };
+
+        this.clear = function () {
+            items = [];
+        };
+
+        this.popAll = function () {
+            let itm = [...items]
+            items = []
+            return itm
+        }
+
+        this.updateTime = function () {
+            items.forEach(d => {
+                d.at = Date.now()
+            });
+        }
+    }
+
+</script>
+</body>
+
+</html>

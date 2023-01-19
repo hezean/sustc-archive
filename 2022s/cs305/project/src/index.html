@@ -1,0 +1,377 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="html">
+
+<head>
+    <title>CS305 Stupid Player</title>
+    <link rel="stylesheet" href="live2d/css/live2d.css"/>
+    <script type="text/javascript" src="swfobject.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.staticfile.org/vue/2.4.2/vue.min.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+    <script type="text/javascript">
+        const loc = window.location.host
+
+        // Create a StrobeMediaPlayback configuration
+        let parameters = {
+            src: "http://" + loc + "/vod/big_buck_bunny.f4m",
+            autoPlay: true,
+            controlBarAutoHide: false,
+            javascriptCallbackFunction: "onJavaScriptBridgeCreated"
+        };
+
+        // Embed the player SWF:
+        swfobject.embedSWF(
+            "StrobeMediaPlayback.swf",
+            "strobeMediaPlayback",
+            1080, 643.2,
+            "10.1.0",
+            {},
+            parameters,
+            {allowFullScreen: "true"},
+            {name: "strobeMediaPlayback"}
+        );
+
+        let currentTime = 0
+        let duration = 0
+        let isPlaying = false
+
+        function onCurrentTimeChange(time, playerId) {
+            currentTime = time
+        }
+
+        function onDurationChange(time, playerId) {
+            duration = time
+        }
+
+        let player = null;
+
+        // add basic support for flash video player
+        function onJavaScriptBridgeCreated(playerId) {
+            if (player == null) {
+                player = document.getElementById(playerId);
+
+                // Add event listeners that will update the
+                player.addEventListener("currentTimeChange", "onCurrentTimeChange");
+                player.addEventListener("durationChange", "onDurationChange");
+
+                // Pause/Resume the playback when we click the Play/Pause link
+                document.getElementById("play-pause").onclick = function () {
+                    const state = player.getState();
+                    if (state === "ready" || state === "paused") {
+                        player.play2();
+                        isPlaying = true;
+                    } else if (state === "playing") {
+                        player.pause();
+                        isPlaying = false;
+                    }
+                    return false;
+                };
+            }
+        }
+
+    </script>
+</head>
+
+
+<body>
+
+<div id="final" style="width:100%">
+
+    <div id="left" style="width:80%; float:left">
+
+        <div class="flash_container" id="content">
+            <div id="strobeMediaPlayback">
+                <p>Adobe Flash Player couldn't be correctly displayed.</p>
+            </div>
+        </div>
+        <div>
+            <span id="currentTime" /></span>
+            <span id="duration" /></span>
+        </div>
+        <div class="dm_input">
+        <textarea id="danmakutext" type="text" placeholder="Say something"
+                  style="width: 300px; height: 50px"></textarea>
+            <button class="send">Send</button>
+        </div>
+
+        <div id="landlord" style="float: bottom">
+            <canvas id="live2d" width="100" height="120" class="live2d"></canvas>
+        </div>
+
+    </div>
+
+    <!-- Chat history, see the below css definitions -->
+    <div id="chat" style="width:20%; float:right">
+        <div class="edge" id="bubbles"></div>
+    </div>
+
+</div>
+
+
+<script type="text/javascript" src="live2d/js/live2d.js"></script>
+<script type="text/javascript">loadlive2d("live2d", "/live2d/model/33/33.json");</script>
+<script src="https://cdn.staticfile.org/jquery/3.3.1/jquery.min.js"></script>
+<script>
+
+    const id = location.port
+    const timers = []  // danmaku moving
+
+    // timers for scheduled functions
+    let queryTimer = null
+    let displayTimer = null
+    let chatTimer = null
+
+    // the timestamp of last request of query new danmaku
+    let lreq = -1
+    // the timestamp of last request of query new chats
+    let lcreq = -1
+
+    // in the case of a lot of danmakus are sent in a small period
+    // we put the body (parsed, which is a list of new danmakus) of the GET request into a queue
+    // and send them later
+    const danmakuQueue = new Queue()
+    // to reduce the number of internet reactions, send the danmakus collected in 100ms as a batch
+    const sendDanmakuQueue = new Queue()
+    // similar to danmakuQueue, use a queue to prevent the function getting new chats been blocked
+    const chatQueue = new Queue()
+
+    function createDanmaku(text) {
+        const jqueryDom = $("<div class='bullet'>" + text + "</div>");
+        const fontColor = "hsl(" + Math.random() * 360 + ", 100%, 75%)";
+        const fontSize = "25px";
+        let top = Math.floor(Math.random() * 390) + "px";
+        const container = $(".flash_container")
+        const left = container.width() + "px";
+        jqueryDom.css({
+            "position": 'absolute',
+            "color": fontColor,
+            "font-size": fontSize,
+            "left": left,
+            "top": top,
+        });
+        container.append(jqueryDom);
+        return jqueryDom;
+    }
+
+    function addInterval(jqueryDom) {
+        const container = $(".flash_container")
+        let left = jqueryDom.offset().left - container.offset().left;
+        const timer = setInterval(function () {
+            left--;
+            jqueryDom.css("left", left + "px");
+            if (jqueryDom.offset().left + jqueryDom.width() < container.offset().left) {
+                jqueryDom.remove();
+                clearInterval(timer);
+            }
+        }, 5);
+        timers.push(timer);
+    }
+
+    $(".send").on("click", async () => {
+        const danmaku = document.getElementById('danmakutext').value;
+        if (danmaku === '') {
+            alert('Blank danmaku is invalid')
+            return;
+        }
+
+        const dm = createDanmaku(danmaku);
+        addInterval(dm);
+
+        // FIXME: player.PercentPlayed()
+        console.log({
+            ts: Math.floor(currentTime * 1000),  // in video time
+            cid: id,  // client id
+            at: 0,  // absolute time, which will be set just before the POST request is sent
+            val: danmaku,  // content str
+        })
+        // danmakus are collected and waited to be sent as a batch
+        sendDanmakuQueue.push({
+            ts: Math.floor(currentTime * 1000),  // in video time
+            cid: id,  // client id
+            at: 0,  // absolute time, which will be set just before the POST request is sent
+            val: danmaku,  // content str
+        });
+
+        document.getElementById('danmakutext').value = '';  // clean the textfield after sent
+    });
+
+    async function sendIncomingDanmakus() {
+        while (!danmakuQueue.isEmpty()) {
+            const dm = createDanmaku(danmakuQueue.pop());
+            addInterval(dm);
+        }
+        if (displayTimer) clearTimeout(displayTimer);
+        displayTimer = setTimeout(() => sendIncomingDanmakus(), 5);
+    }
+
+    async function daemonChatHistory() {
+
+
+
+
+        const tlcreq = Date.now();  // save the time of starting the function as a temp value
+        const resp = await $.get("http://" + loc + "/chat", {
+            last: lcreq,
+            cid: id,
+        });
+        lcreq = tlcreq;  // each time, update lcreq as the time of begging this function, to avoid missing danmakus
+        chatQueue.push(resp['dm']);
+
+        while (!chatQueue.isEmpty()) {
+            const chat_sender = chatQueue.pop();
+            let s;
+            if (chat_sender[1]) {  // bool is_my_danmaku, judged by the server
+                s = '<div class="my_bubble"><span>' + chat_sender[0] + '</span></div>';
+            } else {
+                s = '<div class="bubble"><span>' + chat_sender[0] + '</span></div>';
+            }
+            document.getElementById('bubbles').innerHTML += s;
+            document.getElementById('bubbles').scrollIntoView();
+        }
+
+        if (chatTimer) clearTimeout(chatTimer);
+        chatTimer = setTimeout(() => daemonChatHistory(), 70);
+    }
+
+    async function getNewDanmakus() {
+        // at the start of video (after reloading a video to display) or the video has played 100ms after last fetch s.t. the danmakus won't overlap
+        if (currentTime < 1 && isPlaying
+            || Math.abs(Math.floor(currentTime * 1000) - lreq) > 100) {
+            const resp = await $.get("http://" + loc + "/danmaku", {
+                last: lreq,
+            });
+            danmakuQueue.push(resp['dm']);
+            lreq = Math.ceil(currentTime * 1000);  // ms
+        }
+
+        // send all the danmakus in last 100ms
+        // the absolute sent time updated to the items in the queue must be later than its display time
+        // thus no overlap and no missing
+        if (!sendDanmakuQueue.isEmpty()) {
+            sendDanmakuQueue.updateTime();
+            await $.post("http://" + loc + "/danmaku", {
+                dms: JSON.stringify(sendDanmakuQueue.popAll())
+            });
+            lreq = Math.ceil(currentTime * 1000);
+        }
+
+        if (queryTimer) clearTimeout(queryTimer);
+        queryTimer = setTimeout(() => getNewDanmakus(), 100);  // 10 checks per sec
+    }
+
+    daemonChatHistory()
+    sendIncomingDanmakus()
+    getNewDanmakus()
+
+    function Queue() {
+        let items = [];
+
+        this.push = function (element) {
+            if (element instanceof Array) items = items.concat(element);
+            else items.push(element);
+        };
+
+        this.pop = function () {
+            return items.shift();
+        };
+
+        this.isEmpty = function () {
+            return items.length === 0;
+        };
+
+        this.clear = function () {
+            items = [];
+        };
+
+        this.popAll = function () {
+            let itm = [...items]
+            items = []
+            return itm
+        }
+
+        this.updateTime = function () {
+            items.forEach(d => {
+                d.at = Date.now()
+            });
+        }
+    }
+
+</script>
+
+
+<style>
+
+    .flash_container {
+        position: relative;
+        width: 1080px;
+        height: 643px;
+        margin: 30px auto;
+        background: #000;
+        overflow: hidden;
+        border-style: solid;
+        border-color: #0c7d88;
+    }
+
+    .dm_input {
+        width: 600px;
+        margin: 20px auto;
+        text-align: center;
+    }
+
+    .edge {
+        height: 730px;
+        border: 1px solid #666;
+        background: #fff;
+        margin: 10px auto 0;
+        overflow: auto;
+    }
+
+    .bubble {
+        margin: 10px;
+    }
+
+    .bubble span {
+        display: inline-block;
+        background: #0181cc;
+        border-radius: 7px;
+        color: #fff;
+        padding: 5px 10px;
+    }
+
+    .my_bubble {
+        margin: 10px;
+        text-align: right;
+    }
+
+    .my_bubble span {
+        display: inline-block;
+        background: #ef8201;
+        border-radius: 7px;
+        color: #fff;
+        padding: 5px 10px;
+    }
+
+    #landlord {
+        position: relative;
+    }
+
+    #landlord canvas {
+        position: absolute;
+        top: -115px;
+        left: 2px;
+    }
+
+    body {
+        background-image: url('./bg.jpeg');
+        background-blend-mode: lighten;
+        background-color: rgba(255,255,255,0.7);
+        background-size: cover;
+    }
+
+</style>
+
+</body>
+
+</html>

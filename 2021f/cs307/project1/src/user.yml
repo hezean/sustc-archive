@@ -1,0 +1,5 @@
+host: 172.18.24.39
+port: 5432
+user: chris
+pwd: Lzy20020924
+db: cs307_21f
