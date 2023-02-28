@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<?import darkchess.view.components.DroppingBoardView?>
+<VBox prefHeight="400.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="darkchess.control.controllers.GamePageController" fx:id="rootBox">
+    <children>
+        <MenuBar VBox.vgrow="NEVER" fx:id="menuBar">
+            <menus>
+                <Menu mnemonicParsing="false" text="Game">
+                    <items>
+                        <MenuItem fx:id="restartMenuItem" mnemonicParsing="false" onAction="#doRestart" text="Restart" />
+                        <MenuItem fx:id="recoverMenuItem" mnemonicParsing="false" onAction="#doRecover" text="Recover From.." />
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="undoMenuItem" disable="true" mnemonicParsing="false" onAction="#doUndo" text="Undo" />
+                        <MenuItem fx:id="redoMenuItem" disable="true" mnemonicParsing="false" onAction="#doRedo" text="Redo" />
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="saveMenuItem" mnemonicParsing="false" onAction="#doSave" text="Save As…" />
+                        <MenuItem fx:id="quitMenuItem" mnemonicParsing="false" onAction="#doQuitGame" text="Quit" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="Utilities">
+                    <items>
+                        <MenuItem fx:id="trickModeMenuItem" mnemonicParsing="false" onAction="#onToggleTrickMode" text="Trick Mode: Off" />
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="musicToggle" mnemonicParsing="false" onAction="#doChangeMusicToggle" text="Music: On" />
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+        <GridPane fx:id="content" maxHeight="Infinity" maxWidth="Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="480.0" prefWidth="539.0">
+            <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="10.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="43.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="10.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="37.0" />
+            </columnConstraints>
+            <rowConstraints>
+                <RowConstraints percentHeight="100.0" vgrow="ALWAYS" />
+            </rowConstraints>
+            <children>
+                <VBox prefHeight="200.0" prefWidth="100.0" GridPane.columnIndex="3">
+                    <children>
+                        <Label fx:id="stepFlag" text="On going #? step" textFill="#453e4d">
+                            <font>
+                                <Font size="10.0" />
+                            </font>
+                            <padding>
+                                <Insets left="10.0" right="30.0" top="15.0" />
+                            </padding>
+                        </Label>
+                        <Label fx:id="currentPlayerText1" text="Current Player: ?" textFill="#003cff">
+                            <font>
+                                <Font size="20.0" />
+                            </font>
+                            <padding>
+                                <Insets bottom="5.0" left="10.0" right="30.0" top="5.0" />
+                            </padding>
+                        </Label>
+                        <Label fx:id="p1Score" text="[P1] Player1 :  ? pts" textFill="#003cff">
+                            <font>
+                                <Font size="15.0" />
+                            </font>
+                            <padding>
+                                <Insets bottom="5.0" left="10.0" top="5.0" />
+                            </padding>
+                        </Label>
+                        <Label fx:id="p2Score" text="[P2] Player2 :  ? pts" textFill="#003cff">
+                            <font>
+                                <Font size="15.0" />
+                            </font>
+                            <padding>
+                                <Insets bottom="10.0" left="10.0" />
+                            </padding>
+                        </Label>
+                        <StackPane prefHeight="10000" />
+                        <HBox alignment="BOTTOM_LEFT">
+                            <children>
+                                <Button fx:id="undoBtn" alignment="BOTTOM_LEFT" disable="true" mnemonicParsing="false" text="Undo" textAlignment="CENTER" onAction="#doUndo">
+                                    <HBox.margin>
+                                        <Insets bottom="15.0" left="10.0" />
+                                    </HBox.margin>
+                                </Button>
+                                <Button fx:id="redoBtn" disable="true" mnemonicParsing="false" text="Redo" textAlignment="CENTER" onAction="#doRedo">
+                                    <HBox.margin>
+                                        <Insets bottom="15.0" left="20.0" />
+                                    </HBox.margin>
+                                </Button>
+                            </children>
+                            <opaqueInsets>
+                                <Insets />
+                            </opaqueInsets>
+                        </HBox>
+                    </children>
+                </VBox>
+                <GridPane GridPane.columnIndex="0" fx:id="redDownBoard">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                    </columnConstraints>
+                </GridPane>
+                <GridPane GridPane.columnIndex="2" fx:id="blackDownBoard">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                    </columnConstraints>
+                </GridPane>
+                <DroppingBoardView GridPane.columnIndex="1" fx:id="droppingBoard" prefHeight="Infinity"/>
+            </children>
+        </GridPane>
+    </children>
+</VBox>

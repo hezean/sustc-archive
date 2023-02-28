@@ -1,0 +1,10 @@
+Joseph, SIFAKIS:Distinguished Professor,South Tower, CoE Building,joseph.sifakis@univ-grenoble-alpes.fr,http://www-verimag.imag.fr/~sifakis/
+YAO, Xin:Chair Professor, Department Head,Office 410, South Tower, CoE Building,xiny@sustech.edu.cn,http://cse.sustech.edu.cn/faculty/~xiny
+YANG, Shuanghua:Chair Professor,Office 618, South Tower, CoE Building,yangsh@sustech.edu.cn,http://faculty.sustech.edu.cn/yangsh/
+THEODOROPOULOS, Georgios:Chair Professor,Office 518, South Tower, CoE Building,georgios@sustech.edu.cn,http://cse.sustech.edu.cn/faculty/~georgios
+SHI, Yuhui:Chair Professor,Office 521, South Tower, CoE Building,shiyh@sustech.edu.cn,http://faculty.sustech.edu.cn/shiyh/
+ISHIBUCHI, Hisao:Chair Professor,Office 617, South Tower, CoE Building,hisao@sustech.edu.cn,http://cse.sustech.edu.cn/faculty/~hisao
+LIU, Jiang:Professor,Office 409, South Tower, CoE Building,liuj@sustech.edu.cn,http://cse.sustech.edu.cn/faculty/~liuj
+TANG, Ke:Professor,Office 616, South Tower, CoE Building,tangk3@sustech.edu.cn, https://faculty.sustech.edu.cn/tangk3/
+ZHANG, Jianguo:Professor,Office 313, South Tower, CoE Building,zhangjg@sustech.edu.cn,http://faculty.sustech.edu.cn/zhangjg/
+ZHANG, Yinqian:Professor,Office 615, South Tower, CoE Building,zhangyq3@sustech.edu.cn,https://www.sustech.edu.cn/zh/zhangyinqian.html
