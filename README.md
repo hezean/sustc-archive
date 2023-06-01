@@ -1,6 +1,7 @@
 # SUSTech Archive
 
 [![GitHub license](https://img.shields.io/github/license/hezean/sustc-archive)](https://github.com/hezean/sustc-archive/blob/master/LICENSE)
+![GitHub repo size](https://img.shields.io/github/repo-size/hezean/sustc-archive)
 
 This repo holds a collection of course materials for SUSTech undergraduate education (CSE, class of 2020).
 
