@@ -47,9 +47,7 @@ This repo holds a collection of course materials for SUSTech undergraduate educa
   - [**CS328** Distributed Systems and Cloud Computing](./2023s/cs328)
   - [**CLE050** Elementary Japanese](./2023s/cle050)
 
-  
-
-- [utilities for tis.sustech.edu.cn](./tis-utils)
-  - [capture course](./tis-utils/capture-course)
-  - [course table to ical](./tis-utils/cousetable)
-  - [point selection phase tracker & notifier](./tis-utils/tis-tracker)
+- [Toolbox for tis.sustech.edu.cn](./tis-toolbox) :warning: *toy code - no longer maintained / PRs welcomed*
+  - [capture course](./tis-toolbox/capture-course)
+  - [course table to ical](./tis-toolbox/cousetable)
+  - [point selection phase tracker & notifier](./tis-toolbox/tis-tracker)

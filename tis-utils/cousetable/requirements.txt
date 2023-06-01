@@ -1,4 +1,0 @@
-icalendar
-pytz
-requests
-rich
