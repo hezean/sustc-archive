@@ -6,6 +6,9 @@ import re
 import time
 
 import requests
+from requests.packages import urllib3
+
+urllib3.disable_warnings()
 
 logger = logging.getLogger('tis.info')
 logging.basicConfig(level=logging.INFO,
@@ -16,6 +19,9 @@ cas_url = 'https://cas.sustech.edu.cn/cas/login?service=https%3A%2F%2Ftis.sustec
 ele_url = 'https://tis.sustech.edu.cn/Xsxk/addGouwuche'
 
 session = requests.Session()
+session.headers.update({'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'})
+session.verify = False
+
 try:
     tis = session.get(cas_url)
 except:

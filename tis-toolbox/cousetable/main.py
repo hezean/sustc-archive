@@ -20,11 +20,16 @@ from icalendar import Calendar, Event, vText
 import pytz
 
 from requests import Session
+from requests.packages import urllib3
 from rich.console import Console
 from rich.table import Table
 
-console = Console()
+urllib3.disable_warnings()
 session = Session()
+session.headers.update({'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'})
+session.verify = False
+
+console = Console()
 meta = {}
 table = {}  # { (name_cn, name_en, location, week): { (dow, sod): [ week ] } }
 alias_cn = {}
